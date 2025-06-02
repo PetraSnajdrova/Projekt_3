@@ -1,5 +1,4 @@
 # Projekt_3
-# Projekt_3
 Tento script slouží ke stažení a uložení volebních výsledků z voleb do Poslanecké sněmovny 2017 z webu [volby.cz](https://www.volby.cz). Výsledky jsou ukládány do CSV souboru.
 
 ## 📦 Instalace
