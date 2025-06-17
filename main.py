@@ -42,17 +42,26 @@ def zpracuj_obec(url: str) -> Dict[str, str]:
     odpoved = requests.get(url)
     soup = BeautifulSoup(odpoved.text, "html.parser")
 
+    # Kód obce z URL
     kod_obce = url.split("xobec=")[1].split("&")[0]
-    h3 = soup.find_all("h3")
-    nazev_obce = h3[2].get_text(strip=True) \
-    .replace("Obec: ", "") \
-    if len(h3) >= 3 else "Neznámá obec"
 
+    # Název obce z 3. <h3> tagu
+    try:
+        h3 = soup.find_all("h3")
+        nazev_obce = h3[2].get_text(strip=True).replace("Obec: ", "")
+    except IndexError:
+        nazev_obce = "Neznámá obec"
+
+    # Statistika
     cisla = soup.select("table#ps311_t1 td.cislo")
-    volici = cisla[3].text.strip().replace("\xa0", "").replace(" ", "")
-    obalky = cisla[4].text.strip().replace("\xa0", "").replace(" ", "")
-    platne = cisla[7].text.strip().replace("\xa0", "").replace(" ", "")
+    try:
+        volici = cisla[3].text.strip().replace("\xa0", "").replace(" ", "")
+        obalky = cisla[4].text.strip().replace("\xa0", "").replace(" ", "")
+        platne = cisla[7].text.strip().replace("\xa0", "").replace(" ", "")
+    except IndexError:
+        volici = obalky = platne = "0"
 
+    # Hlasy pro strany
     strany = {}
     for tabulka in soup.select("div.t2_470 table"):
         for radek in tabulka.find_all("tr")[2:]:
@@ -98,10 +107,19 @@ def uloz_do_csv(vysledky: List[Dict[str, str]], soubor: str) -> None:
         zapisovac.writerows(vysledky)
 
 
+def ziskej_vysledky_obci(url: str) -> List[Dict[str, str]]:
+    """Získá volební výsledky pro všechny obce z daného URL okresu."""
+    odkazy = ziskej_odkazy_na_obce(url)
+    print(f"Nalezeno {len(odkazy)} obcí.")
+    vysledky = []
+    for obec_url in odkazy:
+        print(f"Zpracovávám obec: {obec_url}")
+        vysledky.append(zpracuj_obec(obec_url))
+    return vysledky
+
+
 def main() -> None:
-    """
-    Spustí hlavní proces: validace vstupních argumentů, stažení a uložení dat.
-    """
+    """Hlavní funkce skriptu. Zpracuje argumenty a spustí celý proces."""
     if len(sys.argv) != 3:
         print("Použití: python main.py <URL_uzemniho_celku> <vystup.csv>")
         return None
@@ -113,14 +131,7 @@ def main() -> None:
         print("Zadej URL na stránku výběru obcí (např. okres Benešov).")
         return None
 
-    odkazy = ziskej_odkazy_na_obce(url)
-    print(f"Nalezeno {len(odkazy)} obcí.")
-
-    vysledky = []
-    for obec_url in odkazy:
-        print(f"Zpracovávám obec: {obec_url}")
-        vysledky.append(zpracuj_obec(obec_url))
-
+    vysledky = ziskej_vysledky_obci(url)
     uloz_do_csv(vysledky, vystup)
     print(f"Výsledky uloženy do souboru {vystup}")
 
